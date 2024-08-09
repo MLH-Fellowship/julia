@@ -1921,7 +1921,7 @@ julia> vcat(range(1, 2, length=3))  # collects lazy ranges
  2.0
 
 julia> two = ([10, 20, 30]', Float64[4 5 6; 7 8 9])  # row vector and a matrix
-([10 20 30], [4.0 5.0 6.0; 7.0 8.0 9.0])
+(adjoint([10, 20, 30]), [4.0 5.0 6.0; 7.0 8.0 9.0])
 
 julia> vcat(two...)
 3×3 Matrix{Float64}:
@@ -3407,6 +3407,8 @@ mapany(f, itr) = Any[f(x) for x in itr]
 
 Transform collection `c` by applying `f` to each element. For multiple collection arguments,
 apply `f` elementwise, and stop when any of them is exhausted.
+
+The element type of the result is determined in the same manner as in [`collect`](@ref).
 
 See also [`map!`](@ref), [`foreach`](@ref), [`mapreduce`](@ref), [`mapslices`](@ref), [`zip`](@ref), [`Iterators.map`](@ref).
 
