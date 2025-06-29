@@ -528,13 +528,13 @@ test_typed_ir_printing(g15714, Tuple{Vector{Float32}},
 #@test used_dup_var_tested15715
 @test used_unique_var_tested15714
 
-let li = typeof(fieldtype).name.mt.cache.func::Core.MethodInstance,
+let li = only(methods(fieldtype)).unspecialized,
     lrepr = string(li),
     mrepr = string(li.def),
     lmime = repr("text/plain", li),
     mmime = repr("text/plain", li.def)
 
-    @test lrepr == lmime == "MethodInstance for fieldtype(...)"
+    @test lrepr == lmime == "MethodInstance for fieldtype(::Vararg{Any})"
     @test mrepr == "fieldtype(...) @ Core none:0"       # simple print
     @test mmime == "fieldtype(...)\n     @ Core none:0" # verbose print
 end
@@ -577,6 +577,32 @@ fLargeTable(::Union, ::Union) = "b"
 @test length(methods(fLargeTable)) == 205
 @test fLargeTable(Union{Int, Missing}, Union{Int, Missing}) == "b"
 
+# issue #58479
+fLargeTable(::Type) = "Type"
+fLargeTable(::Type{<:DataType}) = "DataType"
+@test fLargeTable(Type) == "Type"
+@test fLargeTable(DataType) == "DataType"
+@test fLargeTable(Type{DataType}) == "DataType"
+@test fLargeTable(Type{UnionAll}) == "DataType"
+@test fLargeTable(Type{Int}) == "DataType"
+@test fLargeTable(Type{Vector}) == "Type"
+@test fLargeTable(Type{Type{Union{}}}) == "DataType"
+@test fLargeTable(Type{Union{}}) == "Type"
+@test fLargeTable(Union{}) == "DataType"
+@test fLargeTable(Type{<:DataType}) == "Type"
+fLargeTable(::Type{<:UnionAll}) = "UnionAll"
+@test fLargeTable(UnionAll) == "UnionAll"
+@test fLargeTable(Type{Vector}) == "UnionAll"
+@test fLargeTable(Type{Int}) == "DataType"
+@test fLargeTable(Type{Type{Union{}}}) == "DataType"
+@test fLargeTable(Type{Union{}}) == "Type"
+@test_throws MethodError fLargeTable(Union{})
+@test fLargeTable(Type{<:DataType}) == "Type"
+@test fLargeTable(Type{Vector{T}} where T) == "DataType"
+@test fLargeTable(Union{DataType,Type{Vector{T}} where T}) == "DataType"
+@test fLargeTable(Union{DataType,UnionAll,Type{Vector{T}} where T}) == "Type"
+@test fLargeTable(Union{Type{Vector},Type{Vector{T}} where T}) == "Type"
+
 # issue #15280
 function f15280(x) end
 @test functionloc(f15280)[2] > 0
@@ -591,9 +617,9 @@ function module_depth(from::Module, to::Module)
 end
 function has_backslashes(mod::Module)
     for n in names(mod, all = true, imported = true)
-        isdefined(mod, n) || continue
+        isdefinedglobal(mod, n) || continue
         Base.isdeprecated(mod, n) && continue
-        f = getfield(mod, n)
+        f = getglobal(mod, n)
         if isa(f, Module) && module_depth(Main, f) <= module_depth(Main, mod)
             continue
         end
